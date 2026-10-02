@@ -1,0 +1,7 @@
+typesafe-sdk
+python-dotenv
+openai
+openpyxl
+pandas
+requests
+streamlit

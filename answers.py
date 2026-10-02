@@ -23,6 +23,8 @@ GREETING = (
     "or *\"What did we spend in August 2026?\"*"
 )
 
+GROUP_LABELS = {"month": "month", "payee": "payee", "category": "category", "mode": "payment mode", "section": "project area"}
+
 _MONTH_NAMES = {name.lower(): i for i, name in enumerate(calendar.month_name) if name}
 _MONTH_NAMES |= {name.lower(): i for i, name in enumerate(calendar.month_abbr) if name}
 _MONTH_NAMES["sept"] = 9
@@ -71,10 +73,10 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
 
     total, count = rows["amount"].sum(), len(rows)
     if intent == "total":
-        text = f"**Total{scope or ' project expenses'}: {inr(total)}** ({inr_short(total)}) across {count} payment(s)."
+        text = f"**Total{scope or ' project expenses'}: {inr(total)}** ({inr_short(total)}) across {_payments(count)}."
         return Reply(text, route=route)
     if intent == "count":
-        return Reply(f"There are **{count}** payment(s){scope}, totalling {inr(total)} ({inr_short(total)}).", route=route)
+        return Reply(f"There are **{_payments(count)}**{scope}, totalling {inr(total)} ({inr_short(total)}).", route=route)
     if intent == "share_per_owner":
         share = total / data.owner_count
         text = (
@@ -86,10 +88,9 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
         shown = rows.sort_values("date", ascending=False)
         if intent == "latest":
             shown = shown.head(_number_in(question) or 5)
-        if intent == "latest":
-            text = f"Latest {len(shown)} payment(s){scope}:"
+            text = f"Latest {_payments(len(shown))}{scope}:"
         else:
-            text = f"{count} payment(s){scope}, totalling {inr(total)}:"
+            text = f"{_payments(count).capitalize()}{scope}, totalling {inr(total)}:"
         return Reply(text, table=_payment_table(shown), route=route)
 
     # ranking / breakdown
@@ -105,7 +106,7 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
         top = grouped.iloc[0]
         text = f"{'Lowest' if ascending else 'Highest'}{scope}: **{top[group]}** with {inr(top['amount'])} ({inr_short(top['amount'])})."
     else:
-        text = f"Spending{scope} by {group}, {inr(total)} in total:"
+        text = f"Spending{scope} by {GROUP_LABELS[group]}, {inr(total)} in total:"
     return Reply(text, table=_money_table(grouped, group), route=route)
 
 
@@ -148,6 +149,10 @@ def _year(year: int) -> Period:
 def _latest_year(month: int, dates: pd.Series, today: pd.Timestamp) -> int:
     years = dates[(dates.dt.month == month) & (dates <= today)].dt.year
     return int(years.max()) if not years.empty else today.year
+
+
+def _payments(count: int) -> str:
+    return f"{count} payment{'' if count == 1 else 's'}"
 
 
 def _number_in(question: str) -> int | None:
@@ -202,13 +207,17 @@ def _group(rows: pd.DataFrame, group: str) -> pd.DataFrame:
     else:
         key = rows[group].fillna(rows["section"].map(SECTION_NAMES))
     grouped = rows.groupby(key.rename(group))["amount"].agg(amount="sum", payments="count").reset_index()
-    return grouped.sort_values(group) if group == "month" else grouped.sort_values("amount", ascending=False)
+    if group == "month":
+        grouped = grouped.sort_values(group)
+        grouped[group] = pd.to_datetime(grouped[group]).dt.strftime("%b %Y")
+        return grouped
+    return grouped.sort_values("amount", ascending=False)
 
 
 def _money_table(grouped: pd.DataFrame, group: str) -> pd.DataFrame:
     table = grouped.copy()
     table["amount"] = table["amount"].map(inr)
-    return table.rename(columns={group: group.title(), "amount": "Amount", "payments": "Payments"})
+    return table.rename(columns={group: GROUP_LABELS[group].capitalize(), "amount": "Amount", "payments": "Payments"})
 
 
 def _payment_table(rows: pd.DataFrame) -> pd.DataFrame:

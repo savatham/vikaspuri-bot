@@ -1,0 +1,7 @@
+[client]
+# Hide the developer menu and error tracebacks from visitors.
+toolbarMode = "minimal"
+showErrorDetails = "none"
+
+[theme]
+primaryColor = "#1f6f8b"

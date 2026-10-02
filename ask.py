@@ -16,7 +16,7 @@ if __name__ == "__main__":
                     f"   route: intent={r.intent.value}({r.intent.confidence:.2f}) section={r.section.value}({r.section.confidence:.2f}) "
                     f"payee={r.payee.value}({r.payee.confidence:.2f}) category={r.category.value}({r.category.confidence:.2f}) "
                     f"mode={r.mode.value}({r.mode.confidence:.2f}) group={r.group_by.value}({r.group_by.confidence:.2f}) "
-                    f"fact={r.fact.value}({r.fact.confidence:.2f}) jev_tokens={r.input_tokens}"
+                    f"fact={r.fact.value}({r.fact.confidence:.2f}) about_money={r.about_money:.2f} jev_tokens={r.input_tokens}"
                 )
             if reply.table is not None:
                 print(reply.table.head(10).to_string(index=False))

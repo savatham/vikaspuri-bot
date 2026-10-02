@@ -7,7 +7,7 @@ dates and lookups happen in code (see answers.py), because Jev is not a calculat
 import re
 from dataclasses import dataclass
 
-from typesafe_sdk import Choice, TypeSafeClient
+from typesafe_sdk import Choice, Noul, TypeSafeClient
 
 from sheet_data import MILESTONES_FACT, ProjectData
 
@@ -15,7 +15,7 @@ NONE = "none"
 
 INTENTS = {
     "total": "How much money has actually been spent or paid so far (recorded payments), possibly for a payee, category, payment mode, part of the project or month",
-    "count": "How many payments or entries there are",
+    "count": "How many payments or expense entries were made (counting payments, not rooms, people or other things)",
     "list": "Show the individual payment entries or transactions",
     "latest": "The most recent or last payment(s)",
     "ranking": "Who or what received the most or least money: top payees, biggest expenses",
@@ -61,6 +61,7 @@ class Route:
     mode: Pick
     group_by: Pick
     fact: Pick
+    about_money: float  # probability the question is about payments, expenses or costs
     input_tokens: int | None = None
 
 
@@ -95,10 +96,12 @@ def route(client: TypeSafeClient, question: str, data: ProjectData) -> Route:
                 NONE: "None of these facts",
             },
         ),
+        # Independent check on the intent: "how many bedrooms" must not be read as "how many payments".
+        "about_money": Noul(instructions="The question asks about money: payments, expenses, costs or amounts paid."),
     }
     response = client.system_one(state={"question": question}, questions=questions)
     picks = {name: Pick(answer.choice, answer.confidence) for name, answer in response.choices.items()}
-    result = Route(**picks, input_tokens=response.usage.input_tokens)
+    result = Route(**picks, about_money=response.nouls["about_money"].noul, input_tokens=response.usage.input_tokens)
     return _apply_literal_matches(question, result, payees, categories)
 
 

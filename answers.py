@@ -59,7 +59,8 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
         return _ask_llm(question, data, route)
     if intent == "off_topic":
         return Reply(GREETING, path="canned", route=route)
-    if intent == "fact":
+    if intent == "fact" or route.about_money < MIN_CONFIDENCE:
+        # Expense answers are only for questions about money; "how many bedrooms" is a fact.
         return _fact(question, data, route)
 
     filters = _filters(route)

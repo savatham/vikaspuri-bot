@@ -83,13 +83,13 @@ def stat_cards(data: ProjectData) -> str:
 # Cards wrap to two per row on phones; padding and the title shrink on narrow screens.
 STYLE = """
 <style>
-[data-testid="stMainBlockContainer"] { padding-top: 4rem; padding-bottom: 6rem; }
+[data-testid="stMainBlockContainer"] { padding-top: 4rem; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin: 0.25rem 0 1rem; }
 .stat { border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 0.6rem; padding: 0.55rem 0.75rem; }
 .stat .label { font-size: 0.75rem; opacity: 0.7; }
 .stat .value { font-size: 1.2rem; font-weight: 600; }
 @media (max-width: 640px) {
-  [data-testid="stMainBlockContainer"] { padding: 3.5rem 0.75rem 6rem; }
+  [data-testid="stMainBlockContainer"] { padding-top: 3.5rem; padding-left: 0.75rem; padding-right: 0.75rem; }
   h1 { font-size: 1.5rem !important; }
   .stat .value { font-size: 1.05rem; }
 }

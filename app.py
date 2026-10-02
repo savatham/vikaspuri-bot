@@ -1,8 +1,10 @@
 """Streamlit chat UI for the Vikaspuri project sheet. Run with: streamlit run app.py"""
 
+import hashlib
 import logging
 import os
 import re
+from pathlib import Path
 
 import streamlit as st
 
@@ -37,8 +39,13 @@ except FileNotFoundError:
     pass
 
 
+# Streamlit keys caches on the decorated function's own source, so edits to the modules it calls
+# would keep serving stale data and answers. Fingerprinting all app code makes each deploy start fresh.
+CODE_VERSION = hashlib.sha256(b"".join(p.read_bytes() for p in sorted(Path(__file__).parent.glob("*.py")))).hexdigest()[:12]
+
+
 @st.cache_data(ttl=600, show_spinner="Loading project data...")
-def get_data() -> ProjectData:
+def get_data(code_version: str) -> ProjectData:
     return load_data()
 
 
@@ -48,10 +55,10 @@ def get_client():
 
 
 @st.cache_data(ttl=3600, max_entries=2000, show_spinner=False)
-def cached_reply(question: str, data_version: str) -> Reply:
-    # Keyed on the normalized question and the sheet version, so a repeated question costs nothing
-    # until the sheet changes.
-    return ask(question, get_data(), get_client())
+def cached_reply(question: str, data_version: str, code_version: str) -> Reply:
+    # Keyed on the normalized question, sheet version and code version, so a repeated question
+    # costs nothing until the sheet or the app changes.
+    return ask(question, get_data(code_version), get_client())
 
 
 def normalize(question: str) -> str:
@@ -102,7 +109,7 @@ st.title("🏗️ Vikaspuri Project Assistant")
 st.caption("Answers about the Vikaspuri building project, based on the latest project records.")
 
 try:
-    data = get_data()
+    data = get_data(CODE_VERSION)
 except Exception:
     logger.exception("Loading the project sheet failed")
     st.error("The project data couldn't be loaded right now. Please try again in a few minutes.")
@@ -137,7 +144,7 @@ if question:
             st.session_state.asked += 1
             with st.spinner("Looking that up..."):
                 try:
-                    reply = cached_reply(normalize(question), data.version)
+                    reply = cached_reply(normalize(question), data.version, CODE_VERSION)
                 except Exception:
                     logger.exception("Answering failed for question: %s", question)
                     reply = Reply("Sorry, I couldn't answer that just now. Please try again in a moment.", path="canned")

@@ -61,10 +61,43 @@ def normalize(question: str) -> str:
 def show(reply: Reply) -> None:
     st.markdown(reply.text)
     if reply.table is not None:
-        st.dataframe(reply.table, hide_index=True, width="stretch")
+        # Drop columns with nothing in them so tables fit narrow phone screens.
+        table = reply.table.loc[:, (reply.table != "").any()]
+        st.dataframe(table, hide_index=True, width="stretch")
 
 
-st.set_page_config(page_title="Vikaspuri Project Assistant", page_icon="🏗️", layout="centered")
+def pick_example() -> None:
+    st.session_state.pending = st.session_state.example
+    st.session_state.example = None
+
+
+def stat_cards(data: ProjectData) -> str:
+    totals = data.expenses.groupby("section")["amount"].sum()
+    cards = [("Total project", totals.sum())] + [(SECTION_NAMES[s], v) for s, v in totals.items()]
+    return '<div class="stats">' + "".join(
+        f'<div class="stat"><div class="label">{label}</div><div class="value">{inr_short(value)}</div></div>'
+        for label, value in cards
+    ) + "</div>"
+
+
+# Cards wrap to two per row on phones; padding and the title shrink on narrow screens.
+STYLE = """
+<style>
+[data-testid="stMainBlockContainer"] { padding-top: 2.5rem; padding-bottom: 6rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin: 0.25rem 0 1rem; }
+.stat { border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 0.6rem; padding: 0.55rem 0.75rem; }
+.stat .label { font-size: 0.75rem; opacity: 0.7; }
+.stat .value { font-size: 1.2rem; font-weight: 600; }
+@media (max-width: 640px) {
+  [data-testid="stMainBlockContainer"] { padding: 1rem 0.75rem 6rem; }
+  h1 { font-size: 1.5rem !important; }
+  .stat .value { font-size: 1.05rem; }
+}
+</style>
+"""
+
+st.set_page_config(page_title="Vikaspuri Project Assistant", page_icon="🏗️", layout="centered", initial_sidebar_state="collapsed")
+st.markdown(STYLE, unsafe_allow_html=True)
 st.title("🏗️ Vikaspuri Project Assistant")
 st.caption("Answers about the Vikaspuri building project, based on the latest project records.")
 
@@ -75,23 +108,15 @@ except Exception:
     st.error("The project data couldn't be loaded right now. Please try again in a few minutes.")
     st.stop()
 
-with st.sidebar:
-    st.header("Project at a glance")
-    totals = data.expenses.groupby("section")["amount"].sum()
-    st.metric("Total project expenses", inr_short(totals.sum()))
-    for section, amount in totals.items():
-        st.metric(SECTION_NAMES[section], inr_short(amount))
-    st.divider()
-    st.subheader("Try asking")
-    for example in EXAMPLES:
-        if st.button(example, width="stretch"):
-            st.session_state.pending = example
+st.markdown(stat_cards(data), unsafe_allow_html=True)
 
 st.session_state.setdefault("messages", [])
 st.session_state.setdefault("asked", 0)
 
 with st.chat_message("assistant"):
     st.markdown(WELCOME)
+if not st.session_state.messages and "pending" not in st.session_state:
+    st.pills("Try asking", EXAMPLES, key="example", on_change=pick_example)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         if message["role"] == "assistant":

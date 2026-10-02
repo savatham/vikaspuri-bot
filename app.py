@@ -94,7 +94,10 @@ with st.chat_message("assistant"):
     st.markdown(WELCOME)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        show(message["reply"]) if message["role"] == "assistant" else st.markdown(message["text"])
+        if message["role"] == "assistant":
+            show(message["reply"])
+        else:
+            st.markdown(message["text"])
 
 question = st.chat_input("Ask about expenses, owners, utilities or the builder agreement") or st.session_state.pop("pending", None)
 if question:

@@ -3,5 +3,9 @@
 toolbarMode = "minimal"
 showErrorDetails = "none"
 
+[runner]
+# Don't auto-display bare expressions; everything shown is explicit.
+magicEnabled = false
+
 [theme]
 primaryColor = "#1f6f8b"

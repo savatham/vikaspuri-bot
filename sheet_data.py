@@ -163,16 +163,26 @@ def _read_facts(wb) -> tuple[dict[str, str], int]:
     facts: dict[str, str] = {}
 
     summary = list(_rows(wb["Consolidated Summary"]))
-    in_floors = False
+    # Floor table: "Floor | Owners | Children | ..."; every titled column becomes a per-floor fact
+    # plus one combined fact, so new columns added to the sheet are picked up automatically.
+    floor_columns: list[tuple[int, str]] = []
+    combined: dict[str, list[str]] = {}
     for i, row in enumerate(summary):
         first = row[0] if row else None
-        if first == "Floor" and row[1] == "Owners":
-            in_floors = True
+        if first == "Floor":
+            floor_columns = [(j, str(h).strip().lower()) for j, h in enumerate(row) if j > 0 and h]
             continue
-        if in_floors and isinstance(first, str) and first.endswith("Floor") and row[1]:
-            facts[f"{first} owners"] = row[1]
+        if floor_columns and isinstance(first, str) and first.endswith("Floor"):
+            for j, header in floor_columns:
+                value = str(row[j]).strip().rstrip(".") if j < len(row) and row[j] else None
+                if value:
+                    facts[f"{first} {header}"] = value
+                    combined.setdefault(header, []).append(f"{first}: {value}")
             continue
-        in_floors = False
+        if floor_columns:
+            for header, lines in combined.items():
+                facts[f"{header.capitalize()} (all floors)"] = "\n".join(lines)
+            floor_columns = []
         if isinstance(first, str) and first.endswith("details:"):
             detail = next((r[0] for r in summary[i + 1 :] if r and r[0] is not None), None)
             if isinstance(detail, str) and not detail.startswith("Enter any") and not detail.endswith("details:"):

@@ -20,8 +20,8 @@ INTENTS = {
     "latest": "The most recent or last payment(s)",
     "ranking": "Who or what received the most or least money: top payees, biggest expenses",
     "breakdown": "A split of spending by month, payee, category, payment mode or part of the project",
-    "share_per_owner": "Each owner's share of the cost, or how much each owner contributes",
-    "fact": "A non-expense fact: floor owners, water or electricity connection, land size or rates, seller, bank, loan, construction milestones or slabs",
+    "share_per_owner": "Splitting the recorded project expenses (land, building, other) equally between the owners: each owner's share",
+    "fact": "A descriptive fact: floor owners and their children or family, flat layout, size, rooms, interior spending, water or electricity connection, land size or rates, seller, bank, loan, construction milestones or slabs",
     "agreement": "The builder agreement: what is included, allowances, estimated extra costs and buffer, credits or deductions owed by the builder, items to discuss with the builder",
     "open_ended": "Needs explanation, advice, opinion, comparison or reasoning beyond looking up or adding up numbers",
     "off_topic": "A greeting, small talk, or something unrelated to this building project",
@@ -89,7 +89,8 @@ def route(client: TypeSafeClient, question: str, data: ProjectData) -> Route:
         "fact": Choice(
             instructions="Which project fact does the question ask about?",
             criteria={
-                **{f: None for f in data.facts if f != MILESTONES_FACT},
+                # A preview of each value tells Jev what vaguely named facts ("Other details") contain.
+                **{f: _preview(v) for f, v in data.facts.items() if f != MILESTONES_FACT},
                 MILESTONES_FACT: "Slab completion progress and bank loan releases",
                 NONE: "None of these facts",
             },
@@ -99,6 +100,11 @@ def route(client: TypeSafeClient, question: str, data: ProjectData) -> Route:
     picks = {name: Pick(answer.choice, answer.confidence) for name, answer in response.choices.items()}
     result = Route(**picks, input_tokens=response.usage.input_tokens)
     return _apply_literal_matches(question, result, payees, categories)
+
+
+def _preview(value: str, limit: int = 120) -> str:
+    text = " ".join(value.split())
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + "..."
 
 
 def _apply_literal_matches(question: str, result: Route, payees: list[str], categories: list[str]) -> Route:

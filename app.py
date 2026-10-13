@@ -139,9 +139,6 @@ st.session_state.setdefault("asked", 0)
 
 with st.chat_message("assistant"):
     st.markdown(WELCOME)
-if not st.session_state.messages and "pending" not in st.session_state:
-    st.session_state.setdefault("examples", random.sample(EXAMPLES, EXAMPLES_SHOWN))
-    st.pills("Try asking", st.session_state.examples, key="example", on_change=pick_example)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         if message["role"] == "assistant":
@@ -168,3 +165,13 @@ if question:
                     reply = Reply("Sorry, I couldn't answer that just now. Please try again in a moment.", path="canned")
         show(reply)
     st.session_state.messages.append({"role": "assistant", "reply": reply})
+
+# Suggestions sit under the latest answer; ones already asked are swapped for fresh ones from the pool.
+asked = {m["text"] for m in st.session_state.messages if m["role"] == "user"}
+examples = [e for e in st.session_state.get("examples", []) if e not in asked]
+if len(examples) < EXAMPLES_SHOWN:
+    fresh = [e for e in EXAMPLES if e not in asked and e not in examples]
+    examples += random.sample(fresh, min(EXAMPLES_SHOWN - len(examples), len(fresh)))
+st.session_state.examples = examples
+if examples:
+    st.pills("More to ask" if asked else "Try asking", examples, key="example", on_change=pick_example)

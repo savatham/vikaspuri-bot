@@ -17,6 +17,7 @@ from router import NONE, Route
 from sheet_data import MILESTONES_FACT, SECTION_NAMES, ProjectData, inr, inr_short
 
 MIN_CONFIDENCE = float(os.getenv("JEV_MIN_CONFIDENCE", "0.5"))
+SURE_ABOUT_MONEY = 0.9
 
 GREETINGS = (
     "Namaste! 🙏 Ask me anything about Plot 62: payments, floors, the lift, the builder agreement.",
@@ -80,7 +81,11 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
         return _ask_llm(question, data, route)
     if intent in CANNED_LINES:
         return Reply(random.choice(CANNED_LINES[intent]), path="canned", route=route)
-    if intent == "fact" or route.about_money < MIN_CONFIDENCE:
+    named = route.payee.value != NONE or route.category.value != NONE
+    if intent == "fact" and named and route.about_money >= SURE_ABOUT_MONEY:
+        # "How much did the water connection cost?" names the Water category: it wants spending, not the CAN numbers.
+        intent = "total"
+    elif intent == "fact" or route.about_money < MIN_CONFIDENCE:
         # Expense answers are only for questions about money; "how many bedrooms" is a fact.
         return _fact(question, data, route)
 
@@ -109,8 +114,10 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
     if intent in ("list", "latest"):
         shown = rows.sort_values("date", ascending=False)
         if intent == "latest":
-            shown = shown.head(_number_in(question) or 5)
-            text = f"Latest {_payments(len(shown))}{scope}:"
+            # "the latest payment" wants one; "recent payments" wants a few.
+            plural = re.search(r"\b(payments|transactions|entries|expenses)\b", question, re.IGNORECASE)
+            shown = shown.head(_number_in(question) or (5 if plural else 1))
+            text = f"Latest {'payment' if len(shown) == 1 else _payments(len(shown))}{scope}:"
         else:
             text = f"{_payments(count).capitalize()}{scope}, totalling {inr(total)}:"
         return Reply(text, table=_payment_table(shown), route=route)

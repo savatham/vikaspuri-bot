@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 MAX_QUESTIONS_PER_SESSION = int(os.getenv("MAX_QUESTIONS_PER_SESSION", "30"))
 MAX_QUESTION_LENGTH = 300
 WELCOME = (
-    "Hello! I'm the Vikaspuri Project Assistant. Ask me anything about the project's land, "
+    "Hello! I'm the Plot 62 Vikaspuri Assistant. Ask me anything about the project's land, "
     "construction and related expenses, floor owners, water and electricity details, or the "
     "builder agreement."
 )
@@ -107,13 +107,13 @@ STYLE = """
 </style>
 """
 
-st.set_page_config(page_title="Vikaspuri Project Assistant", page_icon="🏗️", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Plot 62 Vikaspuri Assistant", page_icon="🏗️", layout="centered", initial_sidebar_state="collapsed")
 st.markdown(STYLE, unsafe_allow_html=True)
 st.markdown(
-    f'<h1><img class="title-icon" src="data:image/jpeg;base64,{TITLE_IMAGE}" alt=""> Vikaspuri Project Assistant</h1>',
+    f'<h1><img class="title-icon" src="data:image/jpeg;base64,{TITLE_IMAGE}" alt=""> Plot 62 · Vikaspuri</h1>',
     unsafe_allow_html=True,
 )
-st.caption("Answers about the Vikaspuri building project, based on the latest project records.")
+st.caption("Your assistant for the Plot 62, Vikaspuri building project, based on the latest project records.")
 
 try:
     data = get_data(CODE_VERSION)

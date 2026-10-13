@@ -18,7 +18,7 @@ from sheet_data import MILESTONES_FACT, SECTION_NAMES, ProjectData, inr, inr_sho
 MIN_CONFIDENCE = float(os.getenv("JEV_MIN_CONFIDENCE", "0.5"))
 
 GREETING = (
-    "Hi! I can answer questions about the Vikaspuri project: expenses, payees, owners, "
+    "Hi! I can answer questions about the Plot 62, Vikaspuri project: expenses, payees, owners, "
     "water and electricity details, and the builder agreement. Try *\"How much have we paid Nagoor?\"* "
     "or *\"What did we spend in August 2026?\"*"
 )

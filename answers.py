@@ -6,8 +6,9 @@ text (builder agreement, advice) that code can't answer.
 
 import calendar
 import os
+import random
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pandas as pd
 
@@ -17,11 +18,31 @@ from sheet_data import MILESTONES_FACT, SECTION_NAMES, ProjectData, inr, inr_sho
 
 MIN_CONFIDENCE = float(os.getenv("JEV_MIN_CONFIDENCE", "0.5"))
 
-GREETING = (
-    "Hi! I can answer questions about the Plot 62, Vikaspuri project: expenses, payees, owners, "
-    "water and electricity details, and the builder agreement. Try *\"How much have we paid Nagoor?\"* "
-    "or *\"What did we spend in August 2026?\"*"
+GREETINGS = (
+    "Namaste! 🙏 Ask me anything about Plot 62: payments, floors, the lift, the builder agreement.",
+    "Hello! I know where every rupee on Plot 62 went. Try *\"How much have we paid Nagoor?\"*",
+    "Hi there! Slabs, payees, owners, the water connection: what would you like to know?",
+    "Hey! Ready when you are. Try *\"Which slabs are done?\"*",
+    "Happy to help! Ask me about expenses, owners or the builder agreement for Plot 62.",
 )
+
+# Picked at random so off-topic questions don't get the same line every time.
+OFF_TOPIC = (
+    "Nice try 😄 I'm a building bot, not a search engine, and every off-topic question lands on "
+    "someone's AI bill. Ask me about Plot 62 instead.",
+    "I only know about cement, steel and Nagoor's payments. For everything else there's Google, and it's free.",
+    "That's outside my plot. Literally. I only cover Plot 62, Vikaspuri.",
+    "Please don't blow up the admin's AI account with questions I can't answer 😅 "
+    "Try *\"What is each owner's share of the total cost?\"*",
+    "Interesting question! Sadly it isn't in the project sheet, and the sheet is all I've got.",
+    "If it isn't about bricks, builders or bills, you've got the wrong assistant 🧱",
+    "My whole world is one building in Vikaspuri. Ask me something about it!",
+    "Unrelated questions cost real money and add zero floors to the building 🏗️ How about asking which slabs are done?",
+    "Error 62: question not found on Plot 62 😄",
+    "I'd love to help, but the builder agreement doesn't cover that. Try asking about payments or owners.",
+)
+
+CANNED_LINES = {"greeting": GREETINGS, "off_topic": OFF_TOPIC}
 
 GROUP_LABELS = {"month": "month", "payee": "payee", "category": "category", "mode": "payment mode", "section": "project area"}
 
@@ -57,8 +78,8 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
     intent = route.intent.value
     if route.intent.confidence < MIN_CONFIDENCE or intent in ("agreement", "open_ended"):
         return _ask_llm(question, data, route)
-    if intent == "off_topic":
-        return Reply(GREETING, path="canned", route=route)
+    if intent in CANNED_LINES:
+        return Reply(random.choice(CANNED_LINES[intent]), path="canned", route=route)
     if intent == "fact" or route.about_money < MIN_CONFIDENCE:
         # Expense answers are only for questions about money; "how many bedrooms" is a fact.
         return _fact(question, data, route)
@@ -109,6 +130,12 @@ def answer(question: str, route: Route | None, data: ProjectData, today: pd.Time
     else:
         text = f"Spending{scope} by {GROUP_LABELS[group]}, {inr(total)} in total:"
     return Reply(text, table=_money_table(grouped, group), route=route)
+
+
+def reword(reply: Reply) -> Reply:
+    """Replies are cached per question, so pick a fresh line for greetings and off-topic ones each time."""
+    lines = CANNED_LINES.get(reply.route.intent.value) if reply.path == "canned" and reply.route else None
+    return replace(reply, text=random.choice(lines)) if lines else reply
 
 
 def parse_period(question: str, dates: pd.Series, today: pd.Timestamp) -> Period | None:
@@ -169,7 +196,8 @@ def _filters(route: Route) -> dict:
         filters["category"] = route.category
     elif route.section.value != "all":
         filters["section"] = route.section
-    if route.mode.value != NONE:
+    # Splitting by payment mode needs every mode, so a mode filter would leave one row.
+    if route.mode.value != NONE and not (route.intent.value == "breakdown" and route.group_by.value == "mode"):
         filters["mode"] = route.mode
     return filters
 
@@ -268,7 +296,7 @@ def build_context(data: ProjectData, route: Route | None) -> str:
     if intent == "agreement" or route is None:
         summary = "\n".join(f"{k}: {v}" for k, v in data.agreement_summary.items())
         parts.append("BUILDER AGREEMENT ITEMS (CSV)\n" + data.agreement.to_csv(index=False) + summary)
-    if intent not in ("agreement", "fact", "off_topic"):
+    if intent not in ("agreement", "fact", "greeting", "off_topic"):
         rows = expenses
         if route and route.section.value != "all" and route.section.confidence >= MIN_CONFIDENCE:
             rows = rows[rows["section"] == route.section.value]

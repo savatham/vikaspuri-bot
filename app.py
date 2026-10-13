@@ -4,12 +4,13 @@ import base64
 import hashlib
 import logging
 import os
+import random
 import re
 from pathlib import Path
 
 import streamlit as st
 
-from answers import Reply
+from answers import Reply, reword
 from chatbot import ask, load_data, make_client
 from sheet_data import SECTION_NAMES, ProjectData, inr_short
 
@@ -20,16 +21,25 @@ MAX_QUESTION_LENGTH = 300
 WELCOME = (
     "Hello! I'm the Plot 62 Vikaspuri Assistant. Ask me anything about the project's land, "
     "construction and related expenses, floor owners, water and electricity details, or the "
-    "builder agreement."
+    "builder agreement. I only talk Plot 62, so keep it on topic 😉"
 )
+# Each session shows a random handful, so returning visitors see new ideas.
 EXAMPLES = [
     "How much have we paid Nagoor?",
-    "What did we spend in August 2026?",
-    "Who owns the 3rd floor?",
     "What is each owner's share of the total cost?",
     "Top 5 payees for building construction",
     "Which builder agreement items are extra cost?",
+    "Which slabs are done so far?",
+    "Who lives on which floor?",
+    "Which kids will grow up in this building?",
+    "How much did the lift cost?",
+    "Spending by payment mode",
+    "What did we spend in August 2026?",
+    "Biggest 5 expenses so far",
+    "How big is our plot?",
+    "What's the latest payment?",
 ]
+EXAMPLES_SHOWN = 6
 
 # On Streamlit Community Cloud, keys live in st.secrets instead of .env.
 try:
@@ -130,7 +140,8 @@ st.session_state.setdefault("asked", 0)
 with st.chat_message("assistant"):
     st.markdown(WELCOME)
 if not st.session_state.messages and "pending" not in st.session_state:
-    st.pills("Try asking", EXAMPLES, key="example", on_change=pick_example)
+    st.session_state.setdefault("examples", random.sample(EXAMPLES, EXAMPLES_SHOWN))
+    st.pills("Try asking", st.session_state.examples, key="example", on_change=pick_example)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         if message["role"] == "assistant":
@@ -151,7 +162,7 @@ if question:
             st.session_state.asked += 1
             with st.spinner("Looking that up..."):
                 try:
-                    reply = cached_reply(normalize(question), data.version, CODE_VERSION)
+                    reply = reword(cached_reply(normalize(question), data.version, CODE_VERSION))
                 except Exception:
                     logger.exception("Answering failed for question: %s", question)
                     reply = Reply("Sorry, I couldn't answer that just now. Please try again in a moment.", path="canned")

@@ -24,7 +24,8 @@ INTENTS = {
     "fact": "A descriptive fact: floor owners and their children or family, flat layout, size, rooms, interior spending, water or electricity connection, land size or rates, seller, bank, loan, construction milestones or slabs",
     "agreement": "The builder agreement: what is included, allowances, estimated extra costs and buffer, credits or deductions owed by the builder, items to discuss with the builder",
     "open_ended": "Needs explanation, advice, opinion, comparison or reasoning beyond looking up or adding up numbers",
-    "off_topic": "A greeting, small talk, or something unrelated to this building project",
+    "greeting": "A greeting, thanks or small talk with the assistant (hi, hello, thank you, how are you)",
+    "off_topic": "A question or request unrelated to this building project: general knowledge, news, sports, weather, jokes, coding, other people or properties",
 }
 
 SECTIONS = {

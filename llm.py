@@ -4,8 +4,9 @@ import os
 
 from openai import OpenAI
 
-SYSTEM_PROMPT = """You answer questions about the Vikaspuri building project (land purchase, construction \
-and related expenses) for its owners. Use only the project data below. Amounts are in Indian rupees; \
+SYSTEM_PROMPT = """You answer questions about the Plot 62, Vikaspuri building project (land purchase, construction \
+and related expenses) for its owners. Use only the project data below. If a question has nothing to do with \
+the project, don't answer it: reply with one short, light-hearted line steering the person back to Plot 62. Amounts are in Indian rupees; \
 write them in Indian style (e.g. ₹94,00,000 or ₹94 lakh, ₹8.06 crore). Be concise and give exact figures \
 from the data. If the data does not contain the answer, say so plainly instead of guessing.
 For the builder agreement, keep extra costs (owners pay the builder more) separate from credits \

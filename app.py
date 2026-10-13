@@ -11,7 +11,7 @@ from pathlib import Path
 import streamlit as st
 
 from answers import Reply, reword
-from chatbot import ask, load_data, make_client
+from chatbot import ask, download_sheet, load_data, make_client
 from sheet_data import SECTION_NAMES, ProjectData, inr_short
 
 logger = logging.getLogger(__name__)
@@ -50,16 +50,21 @@ except FileNotFoundError:
     pass
 
 
-# Streamlit keys caches on the decorated function's own source, so edits to the modules it calls
-# would keep serving stale data and answers. Fingerprinting all app code makes each deploy start fresh.
 TITLE_IMAGE = base64.b64encode((Path(__file__).parent / "apartment image.jfif").read_bytes()).decode()
 
+# Streamlit keys caches on the decorated function's own source, so edits to the modules it calls
+# would keep serving stale data and answers. Fingerprinting all app code makes each deploy start fresh.
 CODE_VERSION = hashlib.sha256(b"".join(p.read_bytes() for p in sorted(Path(__file__).parent.glob("*.py")))).hexdigest()[:12]
 
 
 @st.cache_data(ttl=600, show_spinner="Loading project data...")
 def get_data(code_version: str) -> ProjectData:
     return load_data()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def get_sheet_file() -> bytes:
+    return download_sheet()
 
 
 @st.cache_resource
@@ -89,6 +94,47 @@ def show(reply: Reply) -> None:
 def pick_example() -> None:
     st.session_state.pending = st.session_state.example
     st.session_state.example = None
+
+
+def new_sum() -> tuple[int, int]:
+    return random.randint(2, 19), random.randint(2, 9)
+
+
+def captcha() -> None:
+    # A quick sum keeps bots from grabbing the sheet; it doesn't check who the person is.
+    a, b = st.session_state.setdefault("captcha", new_sum())
+    if st.session_state.pop("captcha_failed", False):
+        st.error("Not quite. Here's a new one.")
+    with st.form("captcha_form", clear_on_submit=True, border=False):
+        answer = st.text_input(f"Quick check: what is {a} + {b}?")
+        if not st.form_submit_button("Verify"):
+            return
+    if answer.strip() == str(a + b):
+        st.session_state.verified = True
+    else:
+        st.session_state.captcha = new_sum()
+        st.session_state.captcha_failed = True
+    st.rerun()
+
+
+def source_download() -> None:
+    with st.expander("📥 Verify the numbers: download the source sheet"):
+        if not st.session_state.get("verified"):
+            captcha()
+            return
+        try:
+            sheet = get_sheet_file()
+        except Exception:
+            logger.exception("Downloading the project sheet failed")
+            st.error("The sheet couldn't be downloaded right now. Please try again in a few minutes.")
+            return
+        st.download_button(
+            "Download project sheet (.xlsx)",
+            sheet,
+            file_name="Plot 62 Vikaspuri project.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            on_click="ignore",
+        )
 
 
 def stat_cards(data: ProjectData) -> str:
@@ -133,6 +179,7 @@ except Exception:
     st.stop()
 
 st.markdown(stat_cards(data), unsafe_allow_html=True)
+source_download()
 
 st.session_state.setdefault("messages", [])
 st.session_state.setdefault("asked", 0)

@@ -16,8 +16,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_SHEET_ID = "1uj9e6AmA-uFtFRBd2SsKyKfFKwc093CA"
 
 
+def download_sheet() -> bytes:
+    return download_workbook(os.getenv("SHEET_ID", DEFAULT_SHEET_ID))
+
+
 def load_data() -> ProjectData:
-    return parse_workbook(download_workbook(os.getenv("SHEET_ID", DEFAULT_SHEET_ID)))
+    return parse_workbook(download_sheet())
 
 
 def make_client() -> TypeSafeClient:

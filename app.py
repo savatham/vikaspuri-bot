@@ -1,5 +1,6 @@
 """Streamlit chat UI for the Vikaspuri project sheet. Run with: streamlit run app.py"""
 
+import base64
 import hashlib
 import logging
 import os
@@ -41,6 +42,8 @@ except FileNotFoundError:
 
 # Streamlit keys caches on the decorated function's own source, so edits to the modules it calls
 # would keep serving stale data and answers. Fingerprinting all app code makes each deploy start fresh.
+TITLE_IMAGE = base64.b64encode((Path(__file__).parent / "apartment image.jfif").read_bytes()).decode()
+
 CODE_VERSION = hashlib.sha256(b"".join(p.read_bytes() for p in sorted(Path(__file__).parent.glob("*.py")))).hexdigest()[:12]
 
 
@@ -95,6 +98,7 @@ STYLE = """
 .stat { border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 0.6rem; padding: 0.55rem 0.75rem; }
 .stat .label { font-size: 0.75rem; opacity: 0.7; }
 .stat .value { font-size: 1.2rem; font-weight: 600; }
+.title-icon { height: 1.2em; width: 1.2em; object-fit: cover; border-radius: 0.25em; vertical-align: -0.2em; }
 @media (max-width: 640px) {
   [data-testid="stMainBlockContainer"] { padding-top: 3.5rem; padding-left: 0.75rem; padding-right: 0.75rem; }
   h1 { font-size: 1.5rem !important; }
@@ -105,7 +109,10 @@ STYLE = """
 
 st.set_page_config(page_title="Vikaspuri Project Assistant", page_icon="🏗️", layout="centered", initial_sidebar_state="collapsed")
 st.markdown(STYLE, unsafe_allow_html=True)
-st.title("🏗️ Vikaspuri Project Assistant")
+st.markdown(
+    f'<h1><img class="title-icon" src="data:image/jpeg;base64,{TITLE_IMAGE}" alt=""> Vikaspuri Project Assistant</h1>',
+    unsafe_allow_html=True,
+)
 st.caption("Answers about the Vikaspuri building project, based on the latest project records.")
 
 try:
